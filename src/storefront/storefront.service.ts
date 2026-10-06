@@ -63,7 +63,8 @@ export class StorefrontService {
       .select(
         '*, category:categories!products_category_id_fkey(*), brand:brands(*), uom:uom(*), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)',
       )
-      .eq('store_id', storeId);
+      .eq('store_id', storeId)
+      .eq('is_hidden', false);
 
     if (params?.brandId && params.brandId !== 'all') {
       query = query.eq('brand_id', params.brandId);
@@ -109,6 +110,7 @@ export class StorefrontService {
       )
       .eq('id', productId)
       .eq('store_id', storeId)
+      .eq('is_hidden', false)
       .single();
 
     if (error || !data) throw new NotFoundException(`Product not found`);
@@ -141,6 +143,7 @@ export class StorefrontService {
       .from('products')
       .select('category_id')
       .eq('store_id', storeId)
+      .eq('is_hidden', false)
       .not('category_id', 'is', null);
 
     const categoryIds = [
@@ -251,6 +254,7 @@ export class StorefrontService {
         .select(
           '*, category:categories!products_category_id_fkey(*), brand:brands(*), stock:stock_batches(quantity_remaining)',
         )
+        .eq('is_hidden', false)
         .order('created_at', { ascending: false })
         .limit(200),
 

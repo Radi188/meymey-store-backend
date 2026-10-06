@@ -43,6 +43,7 @@ let SalesOrdersService = class SalesOrdersService {
         const { items, ...orderData } = createDto;
         if (!items || items.length === 0)
             throw new common_1.BadRequestException('Sales order must have at least one item');
+        await this.assertSellable(items.map((i) => i.product_id));
         const willBeCompleted = (createDto.status || 'DRAFT').toUpperCase() === 'COMPLETED';
         if (willBeCompleted) {
             for (const item of items) {
@@ -136,6 +137,12 @@ let SalesOrdersService = class SalesOrdersService {
         const itemsChanged = !!(items && items.length > 0);
         const shouldRestoreStock = wasCompleted && (itemsChanged || finalStatus !== 'COMPLETED');
         const shouldDeductStock = finalStatus === 'COMPLETED' && (!wasCompleted || itemsChanged);
+        if (itemsChanged) {
+            await this.assertSellable(items.map((i) => i.product_id));
+        }
+        else if (finalStatus === 'COMPLETED' && !wasCompleted) {
+            await this.assertSellable(await this.orderProductIds(id));
+        }
         if (shouldRestoreStock) {
             await this.restoreStock(id);
         }
@@ -261,6 +268,9 @@ let SalesOrdersService = class SalesOrdersService {
         const existingOrder = await this.findOne(id);
         const wasCompleted = existingOrder.status?.toUpperCase() === 'COMPLETED';
         const willBeCompleted = status.toLowerCase() === 'completed';
+        if (!wasCompleted && willBeCompleted) {
+            await this.assertSellable(await this.orderProductIds(id));
+        }
         if (wasCompleted && !willBeCompleted) {
             await this.restoreStock(id);
         }
@@ -378,6 +388,33 @@ let SalesOrdersService = class SalesOrdersService {
         if (remaining > 0) {
             throw new common_1.BadRequestException(`Insufficient stock for order ${orderNumber}. Requested: ${quantity}, Available: ${quantity - remaining}`);
         }
+    }
+    async assertSellable(productIds) {
+        const ids = [...new Set(productIds.filter((id) => !!id))];
+        if (ids.length === 0)
+            return;
+        const { data: hidden, error } = await this.supabaseService
+            .getAdminClient()
+            .from('products')
+            .select('name')
+            .in('id', ids)
+            .eq('is_hidden', true);
+        if (error)
+            throw error;
+        if (hidden && hidden.length > 0) {
+            const names = hidden.map((p) => `"${p.name}"`).join(', ');
+            throw new common_1.BadRequestException(`${names} ${hidden.length === 1 ? 'is' : 'are'} hidden and can't be sold. Unhide ${hidden.length === 1 ? 'it' : 'them'} on the Products page first.`);
+        }
+    }
+    async orderProductIds(orderId) {
+        const { data, error } = await this.supabaseService
+            .getAdminClient()
+            .from('sales_order_items')
+            .select('product_id')
+            .eq('sales_order_id', orderId);
+        if (error)
+            throw error;
+        return (data ?? []).map((i) => i.product_id).filter(Boolean);
     }
     async checkStockAvailability(productId, variantId, requestedQuantity) {
         let query = this.supabaseService

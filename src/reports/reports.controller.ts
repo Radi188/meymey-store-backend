@@ -85,6 +85,11 @@ export class ReportsController {
     return this.reportsService.getProductSuppliersReport();
   }
 
+  @Get('supplier-stock')
+  getSupplierStockReport() {
+    return this.reportsService.getSupplierStockReport();
+  }
+
   @Get('yearly-profit-loss')
   getYearlyProfitLoss(
     @Request() req: any,

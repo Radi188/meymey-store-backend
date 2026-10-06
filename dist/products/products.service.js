@@ -141,6 +141,7 @@ let ProductsService = class ProductsService {
                 .from('products')
                 .select('*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)')
                 .eq('category_id', currentProduct.category_id)
+                .eq('is_hidden', false)
                 .neq('id', currentProduct.id)
                 .limit(limit);
             if (catProducts) {
@@ -157,6 +158,7 @@ let ProductsService = class ProductsService {
             .from('products')
             .select('*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)')
             .eq('brand_id', currentProduct.brand_id)
+            .eq('is_hidden', false)
             .neq('id', currentProduct.id)
             .limit(limit - recommendations.length);
         if (brandProducts) {
@@ -172,6 +174,7 @@ let ProductsService = class ProductsService {
             .from('products')
             .select('*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)')
             .neq('id', currentProduct.id)
+            .eq('is_hidden', false)
             .limit(limit * 2);
         if (topStockProducts) {
             const mapped = topStockProducts
@@ -258,6 +261,7 @@ let ProductsService = class ProductsService {
         const allowedSortFields = ['name', 'price', 'created_at'];
         const sortBy = allowedSortFields.includes(params?.sortBy ?? '') ? params.sortBy : 'name';
         const inStock = params?.inStock ?? false;
+        const includeHidden = params?.includeHidden ?? false;
         let categoryProductIds = null;
         if (categoryId && categoryId !== 'all' && categoryId !== 'uncategorized' && categoryId !== 'package') {
             const { data: catLinks } = await this.supabaseService
@@ -307,6 +311,9 @@ let ProductsService = class ProductsService {
             .getAdminClient()
             .from('products')
             .select('*', { count: 'exact', head: true });
+        if (!includeHidden) {
+            productCountQuery = productCountQuery.eq('is_hidden', false);
+        }
         if (search) {
             productCountQuery = this.applySearchFilters(productCountQuery, search);
         }
@@ -364,6 +371,9 @@ let ProductsService = class ProductsService {
                 .getAdminClient()
                 .from('products')
                 .select('*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)');
+            if (!includeHidden) {
+                productDataQuery = productDataQuery.eq('is_hidden', false);
+            }
             if (search) {
                 productDataQuery = this.applySearchFilters(productDataQuery, search);
             }

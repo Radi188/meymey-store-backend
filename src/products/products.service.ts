@@ -192,6 +192,7 @@ export class ProductsService {
           '*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)',
         )
         .eq('category_id', currentProduct.category_id)
+        .eq('is_hidden', false)
         .neq('id', currentProduct.id)
         .limit(limit);
 
@@ -213,6 +214,7 @@ export class ProductsService {
         '*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)',
       )
       .eq('brand_id', currentProduct.brand_id)
+      .eq('is_hidden', false)
       .neq('id', currentProduct.id)
       .limit(limit - recommendations.length);
 
@@ -236,6 +238,7 @@ export class ProductsService {
         '*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)',
       )
       .neq('id', currentProduct.id)
+      .eq('is_hidden', false)
       .limit(limit * 2); // Fetch more to filter out usedIds and sort
 
     if (topStockProducts) {
@@ -341,6 +344,7 @@ export class ProductsService {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     inStock?: boolean;
+    includeHidden?: boolean;
   }) {
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 30;
@@ -352,6 +356,7 @@ export class ProductsService {
     const allowedSortFields = ['name', 'price', 'created_at'];
     const sortBy = allowedSortFields.includes(params?.sortBy ?? '') ? params!.sortBy! : 'name';
     const inStock = params?.inStock ?? false;
+    const includeHidden = params?.includeHidden ?? false;
 
     // Pre-fetch product IDs for category filter via junction table
     let categoryProductIds: string[] | null = null;
@@ -426,6 +431,9 @@ export class ProductsService {
       .from('products')
       .select('*', { count: 'exact', head: true });
 
+    if (!includeHidden) {
+      productCountQuery = productCountQuery.eq('is_hidden', false);
+    }
     if (search) {
       productCountQuery = this.applySearchFilters(productCountQuery, search);
     }
@@ -499,6 +507,9 @@ export class ProductsService {
           '*, category:categories!products_category_id_fkey(*), all_categories:product_categories(category:categories!product_categories_category_id_fkey(*)), brand:brands(*), uom:uom(*), uom_conversions:product_uom_conversions(*, uom:uom(*)), stock:stock_batches(quantity_remaining, variant_id), variants:product_variants(*)',
         );
 
+      if (!includeHidden) {
+        productDataQuery = productDataQuery.eq('is_hidden', false);
+      }
       if (search) {
         productDataQuery = this.applySearchFilters(productDataQuery, search);
       }

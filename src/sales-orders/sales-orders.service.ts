@@ -56,6 +56,8 @@ export class SalesOrdersService {
     if (!items || items.length === 0)
       throw new BadRequestException('Sales order must have at least one item');
 
+    await this.assertSellable(items.map((i) => i.product_id));
+
     const willBeCompleted =
       (createDto.status || 'DRAFT').toUpperCase() === 'COMPLETED';
 
@@ -191,6 +193,14 @@ export class SalesOrdersService {
     // - OR items changed (old stock restored above, new items need deduction)
     const shouldDeductStock =
       finalStatus === 'COMPLETED' && (!wasCompleted || itemsChanged);
+
+    // Hidden products can't be sold: check the new items, or — when an order
+    // is completed without changing its items — the items it already has.
+    if (itemsChanged) {
+      await this.assertSellable(items!.map((i) => i.product_id));
+    } else if (finalStatus === 'COMPLETED' && !wasCompleted) {
+      await this.assertSellable(await this.orderProductIds(id));
+    }
 
     // Step 1: Restore stock for old items when needed
     if (shouldRestoreStock) {
@@ -360,6 +370,10 @@ export class SalesOrdersService {
     const wasCompleted = existingOrder.status?.toUpperCase() === 'COMPLETED';
     const willBeCompleted = status.toLowerCase() === 'completed';
 
+    if (!wasCompleted && willBeCompleted) {
+      await this.assertSellable(await this.orderProductIds(id));
+    }
+
     if (wasCompleted && !willBeCompleted) {
       // Moving away from COMPLETED (e.g. → CANCELLED): return all stock
       await this.restoreStock(id);
@@ -518,6 +532,35 @@ export class SalesOrdersService {
         `Insufficient stock for order ${orderNumber}. Requested: ${quantity}, Available: ${quantity - remaining}`,
       );
     }
+  }
+
+  /** Rejects the sale if any of these products has been hidden. */
+  private async assertSellable(productIds: (string | null | undefined)[]) {
+    const ids = [...new Set(productIds.filter((id): id is string => !!id))];
+    if (ids.length === 0) return;
+    const { data: hidden, error } = await this.supabaseService
+      .getAdminClient()
+      .from('products')
+      .select('name')
+      .in('id', ids)
+      .eq('is_hidden', true);
+    if (error) throw error;
+    if (hidden && hidden.length > 0) {
+      const names = hidden.map((p) => `"${p.name}"`).join(', ');
+      throw new BadRequestException(
+        `${names} ${hidden.length === 1 ? 'is' : 'are'} hidden and can't be sold. Unhide ${hidden.length === 1 ? 'it' : 'them'} on the Products page first.`,
+      );
+    }
+  }
+
+  private async orderProductIds(orderId: string): Promise<string[]> {
+    const { data, error } = await this.supabaseService
+      .getAdminClient()
+      .from('sales_order_items')
+      .select('product_id')
+      .eq('sales_order_id', orderId);
+    if (error) throw error;
+    return (data ?? []).map((i) => i.product_id).filter(Boolean);
   }
 
   private async checkStockAvailability(

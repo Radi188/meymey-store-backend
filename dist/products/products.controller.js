@@ -27,7 +27,7 @@ let ProductsController = class ProductsController {
         const storeId = req.user?.store?.id;
         return this.productsService.create(createProductDto, storeId);
     }
-    findAll(page, limit, search, categoryId, brandId, sortBy, sortOrder, inStock) {
+    findAll(page, limit, search, categoryId, brandId, sortBy, sortOrder, inStock, includeHidden) {
         return this.productsService.findAll({
             page: page ? parseInt(page, 10) : undefined,
             limit: limit ? parseInt(limit, 10) : undefined,
@@ -37,6 +37,7 @@ let ProductsController = class ProductsController {
             sortBy,
             sortOrder: sortOrder === 'desc' ? 'desc' : 'asc',
             inStock: inStock === 'true',
+            includeHidden: includeHidden === 'true',
         });
     }
     findByCategory(page, limit, search) {
@@ -87,8 +88,9 @@ __decorate([
     __param(5, (0, common_1.Query)('sortBy')),
     __param(6, (0, common_1.Query)('sortOrder')),
     __param(7, (0, common_1.Query)('inStock')),
+    __param(8, (0, common_1.Query)('includeHidden')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "findAll", null);
 __decorate([

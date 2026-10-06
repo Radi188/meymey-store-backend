@@ -40,6 +40,8 @@ export class ProductsController {
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: string,
     @Query('inStock') inStock?: string,
+    // Hidden products are left out unless asked for (product management screens).
+    @Query('includeHidden') includeHidden?: string,
   ) {
     return this.productsService.findAll({
       page: page ? parseInt(page, 10) : undefined,
@@ -50,6 +52,7 @@ export class ProductsController {
       sortBy,
       sortOrder: sortOrder === 'desc' ? 'desc' : 'asc',
       inStock: inStock === 'true',
+      includeHidden: includeHidden === 'true',
     });
   }
 

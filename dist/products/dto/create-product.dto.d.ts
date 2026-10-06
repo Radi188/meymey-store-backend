@@ -13,4 +13,5 @@ export declare class CreateProductDto {
     reorder_level?: number;
     how_to_use?: string;
     ingredients?: string;
+    is_hidden?: boolean;
 }

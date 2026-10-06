@@ -6,7 +6,7 @@ export declare class ProductsController {
     private readonly productsService;
     constructor(productsService: ProductsService);
     create(createProductDto: CreateProductDto, req: any): Promise<any>;
-    findAll(page?: string, limit?: string, search?: string, categoryId?: string, brandId?: string, sortBy?: string, sortOrder?: string, inStock?: string): Promise<{
+    findAll(page?: string, limit?: string, search?: string, categoryId?: string, brandId?: string, sortBy?: string, sortOrder?: string, inStock?: string, includeHidden?: string): Promise<{
         data: any[];
         total: number;
         page: number;

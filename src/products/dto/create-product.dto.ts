@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsNumber,
   IsArray,
+  IsBoolean,
   Min,
 } from 'class-validator';
 
@@ -65,4 +66,9 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   ingredients?: string;
+
+  // Hidden products are left out of product listings and can't be sold.
+  @IsOptional()
+  @IsBoolean()
+  is_hidden?: boolean;
 }

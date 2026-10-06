@@ -506,6 +506,148 @@ let ReportsService = class ReportsService {
         }))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
+    async getSupplierStockReport() {
+        const batches = await this.fetchAllStockBatches();
+        const NO_SUPPLIER = { id: null, name: 'No supplier (manual stock)' };
+        const items = new Map();
+        for (const b of batches) {
+            if (!b.product)
+                continue;
+            const po = b.purchase_order;
+            const supplier = po
+                ? {
+                    id: po.supplier?.id ?? po.supplier_id ?? null,
+                    name: po.supplier?.name ?? po.supplier_name ?? 'Unknown supplier',
+                }
+                : NO_SUPPLIER;
+            const key = [b.product_id, b.variant_id ?? '', supplier.id ?? supplier.name].join('|');
+            if (!items.has(key)) {
+                items.set(key, {
+                    key,
+                    product: {
+                        id: b.product.id,
+                        name: b.product.name,
+                        sku: b.product.sku ?? null,
+                        image_url: b.product.image_url ?? null,
+                        price: b.product.price != null ? Number(b.product.price) : null,
+                    },
+                    variant: b.variant ? { id: b.variant.id, name: b.variant.name, sku: b.variant.sku ?? null } : null,
+                    supplier,
+                    transactions: [],
+                });
+            }
+            const qtyReceived = Number(b.quantity_received) || 0;
+            const unitCost = Number(b.unit_cost) || 0;
+            items.get(key).transactions.push({
+                batchId: b.id,
+                batchNumber: b.batch_number ?? null,
+                date: b.received_date ?? po?.order_date ?? b.created_at ?? null,
+                poId: po?.id ?? null,
+                poNumber: po?.order_number ?? null,
+                qtyReceived,
+                qtyRemaining: Number(b.quantity_remaining) || 0,
+                unitCost,
+                totalCost: this.round2(qtyReceived * unitCost),
+            });
+        }
+        const rows = [...items.values()].map((item) => {
+            const txns = item.transactions.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+            const qtyPurchased = txns.reduce((n, t) => n + t.qtyReceived, 0);
+            const qtyRemaining = txns.reduce((n, t) => n + t.qtyRemaining, 0);
+            const purchaseCost = txns.reduce((n, t) => n + t.qtyReceived * t.unitCost, 0);
+            const remainingValue = txns.reduce((n, t) => n + t.qtyRemaining * t.unitCost, 0);
+            const costs = txns.map((t) => t.unitCost);
+            return {
+                ...item,
+                transactions: txns,
+                purchases: txns.length,
+                qtyPurchased,
+                qtyRemaining,
+                qtyUsed: txns.reduce((n, t) => n + Math.max(0, t.qtyReceived - t.qtyRemaining), 0),
+                qtyAdded: txns.reduce((n, t) => n + Math.max(0, t.qtyRemaining - t.qtyReceived), 0),
+                avgUnitCost: qtyPurchased > 0 ? this.round2(purchaseCost / qtyPurchased) : 0,
+                lastUnitCost: txns[0]?.unitCost ?? 0,
+                minUnitCost: costs.length ? Math.min(...costs) : 0,
+                maxUnitCost: costs.length ? Math.max(...costs) : 0,
+                purchaseCost: this.round2(purchaseCost),
+                remainingValue: this.round2(remainingValue),
+                firstPurchaseDate: txns[txns.length - 1]?.date ?? null,
+                lastPurchaseDate: txns[0]?.date ?? null,
+            };
+        });
+        rows.sort((a, b) => a.product.name.localeCompare(b.product.name) ||
+            (a.variant?.name ?? '').localeCompare(b.variant?.name ?? '') ||
+            a.supplier.name.localeCompare(b.supplier.name));
+        const bySupplier = new Map();
+        for (const r of rows) {
+            const k = r.supplier.id ?? r.supplier.name;
+            const s = bySupplier.get(k) ??
+                bySupplier
+                    .set(k, {
+                    supplier: r.supplier,
+                    products: 0,
+                    orders: new Set(),
+                    qtyPurchased: 0,
+                    qtyRemaining: 0,
+                    purchaseCost: 0,
+                    remainingValue: 0,
+                    lastPurchaseDate: null,
+                })
+                    .get(k);
+            s.products += 1;
+            r.transactions.forEach((t) => s.orders.add(t.poId ?? t.batchId));
+            s.qtyPurchased += r.qtyPurchased;
+            s.qtyRemaining += r.qtyRemaining;
+            s.purchaseCost += r.purchaseCost;
+            s.remainingValue += r.remainingValue;
+            if ((r.lastPurchaseDate ?? '') > (s.lastPurchaseDate ?? ''))
+                s.lastPurchaseDate = r.lastPurchaseDate;
+        }
+        const suppliers = [...bySupplier.values()]
+            .map(({ orders, ...s }) => ({
+            ...s,
+            purchases: orders.size,
+            purchaseCost: this.round2(s.purchaseCost),
+            remainingValue: this.round2(s.remainingValue),
+        }))
+            .sort((a, b) => b.purchaseCost - a.purchaseCost);
+        return {
+            summary: {
+                suppliers: suppliers.filter((s) => s.supplier !== NO_SUPPLIER).length,
+                products: new Set(rows.map((r) => r.product.id)).size,
+                purchases: batches.length,
+                qtyPurchased: rows.reduce((n, r) => n + r.qtyPurchased, 0),
+                qtyRemaining: rows.reduce((n, r) => n + r.qtyRemaining, 0),
+                purchaseCost: this.round2(rows.reduce((n, r) => n + r.purchaseCost, 0)),
+                remainingValue: this.round2(rows.reduce((n, r) => n + r.remainingValue, 0)),
+            },
+            suppliers,
+            items: rows,
+        };
+    }
+    async fetchAllStockBatches() {
+        const PAGE = 1000;
+        const all = [];
+        for (let from = 0;; from += PAGE) {
+            const { data, error } = await this.supabaseService
+                .getAdminClient()
+                .from('stock_batches')
+                .select('id, batch_number, product_id, variant_id, quantity_received, quantity_remaining, unit_cost, received_date, created_at, ' +
+                'product:products(id, name, sku, image_url, price), ' +
+                'variant:product_variants(id, name, sku), ' +
+                'purchase_order:purchase_orders(id, order_number, order_date, supplier_id, supplier_name, supplier:suppliers(id, name))')
+                .order('id', { ascending: true })
+                .range(from, from + PAGE - 1);
+            if (error)
+                throw error;
+            all.push(...(data ?? []));
+            if (!data || data.length < PAGE)
+                return all;
+        }
+    }
+    round2(n) {
+        return Math.round(n * 100) / 100;
+    }
 };
 exports.ReportsService = ReportsService;
 exports.ReportsService = ReportsService = __decorate([

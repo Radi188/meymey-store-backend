@@ -55,6 +55,9 @@ let ReportsController = class ReportsController {
     getProductSuppliersReport() {
         return this.reportsService.getProductSuppliersReport();
     }
+    getSupplierStockReport() {
+        return this.reportsService.getSupplierStockReport();
+    }
     getYearlyProfitLoss(req, year) {
         const storeId = req.user?.store?.id;
         const now = new Date();
@@ -148,6 +151,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getProductSuppliersReport", null);
+__decorate([
+    (0, common_1.Get)('supplier-stock'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getSupplierStockReport", null);
 __decorate([
     (0, common_1.Get)('yearly-profit-loss'),
     __param(0, (0, common_1.Request)()),

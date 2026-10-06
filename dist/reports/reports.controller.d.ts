@@ -105,6 +105,61 @@ export declare class ReportsController {
             name: string;
         }[];
     }[]>;
+    getSupplierStockReport(): Promise<{
+        summary: {
+            suppliers: number;
+            products: number;
+            purchases: number;
+            qtyPurchased: number;
+            qtyRemaining: number;
+            purchaseCost: number;
+            remainingValue: number;
+        };
+        suppliers: any[];
+        items: {
+            transactions: {
+                batchId: string;
+                batchNumber: string | null;
+                date: string | null;
+                poId: string | null;
+                poNumber: string | null;
+                qtyReceived: number;
+                qtyRemaining: number;
+                unitCost: number;
+                totalCost: number;
+            }[];
+            purchases: number;
+            qtyPurchased: number;
+            qtyRemaining: number;
+            qtyUsed: number;
+            qtyAdded: number;
+            avgUnitCost: number;
+            lastUnitCost: number;
+            minUnitCost: number;
+            maxUnitCost: number;
+            purchaseCost: number;
+            remainingValue: number;
+            firstPurchaseDate: string | null;
+            lastPurchaseDate: string | null;
+            key: string;
+            product: {
+                id: string;
+                name: string;
+                sku: string | null;
+                image_url: string | null;
+                price: number | null;
+            };
+            variant: {
+                id: string;
+                name: string;
+                sku: string | null;
+            } | null;
+            supplier: {
+                id: string | null;
+                name: string;
+            };
+        }[];
+    }>;
     getYearlyProfitLoss(req: any, year?: string): Promise<{
         month: number;
         monthName: string;

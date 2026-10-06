@@ -24,6 +24,7 @@ export declare class ProductsService {
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
         inStock?: boolean;
+        includeHidden?: boolean;
     }): Promise<{
         data: any[];
         total: number;

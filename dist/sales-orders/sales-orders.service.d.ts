@@ -23,6 +23,8 @@ export declare class SalesOrdersService {
     updateStatus(id: string, status: string): Promise<any>;
     private deductStock;
     private allocateFIFO;
+    private assertSellable;
+    private orderProductIds;
     private checkStockAvailability;
     private checkPackageStockAvailability;
     remove(id: string): Promise<{
