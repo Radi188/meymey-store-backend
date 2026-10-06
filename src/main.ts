@@ -34,6 +34,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(process.env.PORT ?? 3033);
+  // Bind every interface so a reverse proxy / other containers can reach it,
+  // and log the port — a proxy pointing at the wrong one shows up as a 502.
+  const port = Number(process.env.PORT ?? 3033);
+  await app.listen(port, '0.0.0.0');
+  console.log(`API listening on 0.0.0.0:${port}`);
 }
 bootstrap();
