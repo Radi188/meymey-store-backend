@@ -34,10 +34,12 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Bind every interface so a reverse proxy / other containers can reach it,
-  // and log the port — a proxy pointing at the wrong one shows up as a 502.
+  // No host argument: Node then listens on every interface, IPv4 *and* IPv6.
+  // (Binding '0.0.0.0' is IPv4-only, and the container healthcheck's
+  // "localhost" resolves to ::1 first — it was refused and marked unhealthy.)
+  // The port is logged because a proxy pointing at the wrong one shows up as a 502.
   const port = Number(process.env.PORT ?? 3033);
-  await app.listen(port, '0.0.0.0');
-  console.log(`API listening on 0.0.0.0:${port}`);
+  await app.listen(port);
+  console.log(`API listening on port ${port}`);
 }
 bootstrap();

@@ -14,7 +14,7 @@ services:
       NODE_ENV: production
       PORT: "3030"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3030/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3030/health"]
       interval: 30s
       timeout: 10s
       retries: 3
