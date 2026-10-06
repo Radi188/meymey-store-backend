@@ -1,5 +1,8 @@
 node_modules
 dist
+# TypeScript incremental-build caches: a stale one makes `nest build` skip
+# emitting files, leaving no dist/main.js in the image.
+*.tsbuildinfo
 .git
 .gitignore
 *.log
