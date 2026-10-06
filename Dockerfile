@@ -24,6 +24,9 @@ COPY --from=builder /app/dist ./dist
 # Copy firebase service account if present (optional, only if used)
 COPY --from=builder /app/*.json ./
 
+# The app defaults to 3033 for local dev; in the container it must listen on
+# the port Hostinger / docker-compose route to (and the healthcheck calls).
+ENV PORT=3030
 EXPOSE 3030
 
 CMD ["node", "dist/main.js"]

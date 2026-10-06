@@ -466,7 +466,10 @@ export class ProductsService {
     let productCount: number | null = 0;
 
     if (skipPackages) {
-      const { count } = await productCountQuery;
+      const { count, error: countError } = await productCountQuery;
+      // Don't swallow this: a failed count reads as "0 products" and the
+      // list silently shows only packages.
+      if (countError) throw countError;
       productCount = count;
     } else {
       let packageCountQuery = this.supabaseService
@@ -478,10 +481,12 @@ export class ProductsService {
         packageCountQuery = this.applySearchFilters(packageCountQuery, search, false);
       }
 
-      const [{ count: pCount }, { count: pkCount }] = await Promise.all([
-        productCountQuery,
-        packageCountQuery,
-      ]);
+      const [
+        { count: pCount, error: pCountError },
+        { count: pkCount, error: pkCountError },
+      ] = await Promise.all([productCountQuery, packageCountQuery]);
+      if (pCountError) throw pCountError;
+      if (pkCountError) throw pkCountError;
       productCount = pCount;
       pkgCount = pkCount;
     }

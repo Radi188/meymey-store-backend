@@ -6,7 +6,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',')
+        // Browsers send the Origin without a trailing slash, so
+        // "http://localhost:5173/" in the env would otherwise never match.
+        .map((o) => o.trim().replace(/\/+$/, ''))
+        .filter(Boolean)
     : [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
